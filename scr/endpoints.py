@@ -10,7 +10,7 @@ from db_connection import get_db
 
 router = APIRouter()
 
-
+# домашняя страница
 @router.get("/")
 def main():
     return FileResponse("public/home.html")
