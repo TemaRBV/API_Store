@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Store Homepage</title>
+</head>
+<body>
+    <h2>Список товаров</h2>
+    <div>
+        <button id="ordersBtn">Заказы</button>
+        <button id="makeOrderBtn">Сделать заказ</button>
+        <button id="makeProductBtn">Создать товар</button>
+    </div>
+    <div id="info"></div>
+    <table>
+        <thead><tr><th>Название</th><th>Цена</th><th>Остаток</th><th></th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+    <script>
+        // создание списка товаров
+        async function getProducts() {
+            const response = await fetch("/product", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const products = await response.json();
+                const rows = document.querySelector("tbody");
+                products.forEach(product => rows.append(row(product)));
+            }
+        }
+
+        // создание информационного окна
+        async function showInfo(id) {
+            const response = await fetch(`/product/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const product = await response.json();
+                const infoAr = document.getElementById("info");
+                infoAr.innerHTML = '';
+
+                const div = document.createElement("div");
+
+                const pId = document.createElement("p");
+                pId.append("Артикул: ");
+                pId.append(product.id);
+
+                div.append(pId);
+
+                const pInfo = document.createElement("p");
+                pInfo.append("Описание: ");
+                pInfo.append(product.info);
+
+                div.append(pInfo);
+
+                infoAr.appendChild(div);
+
+            }
+            else {
+                // если произошла ошибка, получаем сообщение об ошибке
+                const error = await response.json();
+                console.log(error.message); // и выводим его на консоль
+            }
+
+        }
+
+        // Удаление продукта
+        async function deleteProduct(id) {
+            const response = await fetch(`/product/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                document.querySelector(`tr[data-rowid='${id}']`).remove();
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // создание строки для таблицы
+        function row(product) {
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", product.id);
+
+            const nameTd = document.createElement("td");
+            nameTd.append(product.name);
+            tr.append(nameTd);
+
+            const costTd = document.createElement("td");
+            costTd.append(product.cost);
+            tr.append(costTd);
+
+            const amountTd = document.createElement("td");
+            amountTd.append(product.amount);
+            tr.append(amountTd);
+
+            const linksTd = document.createElement("td");
+
+            const orderLink = document.createElement("button");
+            orderLink.append("Заказать");
+            orderLink.addEventListener("click", function() {
+                window.location.href = `/orders/new?id=${product.id}`;
+            });
+            linksTd.append(orderLink);
+
+            const infoLink = document.createElement("button");
+            infoLink.append("Информация");
+            infoLink.addEventListener("click", async() => await showInfo(product.id));
+            linksTd.append(infoLink);
+
+            const editLink = document.createElement("button");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", function() {
+                window.location.href = `/product/edit?id=${product.id}`;
+            });
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("button");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", async () => await deleteProduct(product.id));
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+
+        //Добавить новый товар
+        document.getElementById("makeProductBtn").addEventListener("click", function() {
+                window.location.href = "/product/edit";
+            });
+
+        //Добавить новый заказ
+        document.getElementById("makeOrderBtn").addEventListener("click", function() {
+                window.location.href = "/orders/new";
+            });
+
+        //Посмотреть заказы
+        document.getElementById("ordersBtn").addEventListener("click", function() {
+                window.location.href = "/orders/list";
+            });
+
+        //загрузка товаров
+        getProducts();
+    </script>
+
+</body>
+</html>

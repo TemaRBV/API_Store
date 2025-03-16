@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create or Edit product</title>
+</head>
+<body>
+    <div>
+        <p>
+            Название товара:<br/>
+            <input id="nameId" >
+        </p>
+        <p>
+            Информация о товаре:<br/>
+            <input id="infoId" >
+        </p>
+        <p>
+            Цена товара:<br/>
+            <input id="costId" >
+        </p>
+        <p>
+            Количество товара:<br/>
+            <input id="amountId" >
+        </p>
+    </div>
+    <div>
+        <button id="saveBtn">Сохранить</button>
+        <button id="restoreBtn">Восстановить</button>
+    </div>
+</body>
+    <script>
+        // заполняет поля
+        async function fill(id) {
+            const response = await fetch(`/product/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const product = await response.json();
+                document.getElementById("nameId").value = product.name;
+                document.getElementById("infoId").value = product.info;
+                document.getElementById("costId").value = product.cost;
+                document.getElementById("amountId").value = product.amount;
+            }
+        }
+
+        //берет значение из адреса
+        function getId() {
+            const url = new URL(window.location.href);
+            const params = new URLSearchParams(url.search);
+            const id = params.get("id");
+            return id;
+        }
+
+        // сброс данных формы
+        function reset() {
+            document.getElementById("nameId").value =
+            document.getElementById("infoId").value =
+            document.getElementById("costId").value =
+            document.getElementById("amountId").value = "";
+        }
+
+        // создание продукта
+        async function createProduct(name, info, cost, amount) {
+            const response = await fetch("/product", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: name,
+                    info: info,
+                    cost: cost,
+                    amount: parseInt(amount, 10)
+                })
+            });
+            if (response.ok === true) {
+                window.location.href = "/";
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // изменение продукта
+        async function editProduct(id, name, info, cost, amount) {
+            const response = await fetch(`/product/${id}`, {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: id,
+                    name: name,
+                    info: info,
+                    cost: cost,
+                    amount: parseInt(amount, 10)
+                })
+            });
+            if (response.ok === true) {
+                window.location.href = "/";
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        //сброс/восстановление значений формы
+        document.getElementById("restoreBtn").addEventListener("click", () => {
+            const id = getId();
+            if (id !== null)
+                fill(id);
+            else
+                reset();
+        });
+
+        //отправка формы
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+            const id = getId()
+            const name = document.getElementById("nameId").value;
+            const info = document.getElementById("infoId").value;
+            const cost = document.getElementById("costId").value;
+            const amount = document.getElementById("amountId").value;
+            if (id !== null)
+                await editProduct(id, name, info, cost, amount);
+
+            else
+                await createProduct(name, info, cost, amount);
+        });
+
+        const pageId = getId();
+        if (pageId !== null)
+            fill(getId());
+
+    </script>
+</html>

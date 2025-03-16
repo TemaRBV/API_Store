@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>List of orders</title>
+</head>
+<body>
+    <h2>Список заказов</h2>
+    <div id="info"></div>
+    <table>
+        <thead><tr><th>ID</th><th>Дата</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+    <script>
+        // создание списка заказов
+        async function getOrders() {
+            const response = await fetch("/orders", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const orders = await response.json();
+                const rows = document.querySelector("tbody");
+                orders.forEach(order => rows.append(row(order)));
+            }
+        }
+
+        // создание информационного окна
+        async function showInfo(id) {
+            const response = await fetch(`/orders/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const order = await response.json();
+                const infoAr = document.getElementById("info");
+                infoAr.innerHTML = '';
+
+                const div = document.createElement("div");
+
+                const pDate = document.createElement("p");
+                pDate.append("Наименование товара: ");
+                pDate.append(order.name);
+
+                div.append(pDate);
+
+                const pInfo = document.createElement("p");
+                pInfo.append("количество: ");
+                pInfo.append(order.amount);
+
+                div.append(pInfo);
+
+                infoAr.appendChild(div);
+
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // изменение статуса заказа
+        async function editStatus(id, status) {
+            const response = await fetch(`/orders/${id}/status`, {
+                method: "PATCH",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    status: status
+                })
+            });
+            if (response.ok !== true) {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        // создание строки для таблицы
+        function row(order) {
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", order.id);
+
+            const idTd = document.createElement("td");
+            idTd.append(order.id);
+            tr.append(idTd);
+
+            const dateTd = document.createElement("td");
+            dateTd.append(order.date);
+            tr.append(dateTd);
+
+            const statusTd = document.createElement("td");
+            const statusSelect = document.createElement("select");
+            const options = ["В процессе", "Отправлен", "Доставлен"];
+            options.forEach(optionText => {
+                const option = document.createElement("option");
+                option.value = optionText;
+                option.textContent = optionText;
+                if (optionText === order.status)
+                    option.selected = true;
+
+                statusSelect.appendChild(option);
+            });
+            statusSelect.addEventListener("change", async () => {
+                const selectedStatus = statusSelect.value;
+                await editStatus(order.id, selectedStatus);
+                console.log(`Статус изменён на: ${selectedStatus}`);
+            });
+            statusTd.append(statusSelect);
+            tr.append(statusTd);
+
+            const linksTd = document.createElement("td");
+
+            const infoLink = document.createElement("button");
+            infoLink.append("Информация");
+            infoLink.addEventListener("click", async() => await showInfo(order.id));
+            linksTd.append(infoLink);
+
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+
+        //загрузка заказов
+        getOrders();
+    </script>
+
+</body>
+</html>
