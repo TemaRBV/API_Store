@@ -3,7 +3,7 @@ from models import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:B10vvyMz@localhost:5432/postgres"
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:B10vvyMz@db:5432/postgres"
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 # создаем таблицы
