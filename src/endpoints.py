@@ -10,6 +10,7 @@ from db_connection import get_db
 
 router = APIRouter()
 
+
 # домашняя страница
 @router.get("/")
 def main():
@@ -118,8 +119,6 @@ def get_order(id, db: Session = Depends(get_db)):
     product_id = order_item.product_id
     product = db.query(Product).filter(Product.id == product_id).first()
     name = product.name
-    db.commit()
-
     return {"name": name, "amount": order_amount}
 
 

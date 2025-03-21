@@ -16,11 +16,11 @@
         </p>
         <p>
             Цена товара:<br/>
-            <input id="costId" >
+            <input id="costId" type="number" required>
         </p>
         <p>
             Количество товара:<br/>
-            <input id="amountId" >
+            <input id="amountId" type="number" required>
         </p>
     </div>
     <div>
@@ -103,6 +103,54 @@
             }
         }
 
+        // валидация полей
+        async function validateAndSubmit(id) {
+            // Получаем значения полей
+            const name = document.getElementById("nameId").value;
+            const info = document.getElementById("infoId").value;
+            const cost = document.getElementById("costId").value;
+            const amount = document.getElementById("amountId").value;
+
+            // Переменная для отслеживания валидности
+            let valid = true;
+            let message = "";
+
+            // Проверяем, заполнено ли поле имени
+            if (!name) {
+                message += "Введите название товара.\n";
+                valid = false;
+            }
+
+            // Проверяем, заполнено ли поле информации
+            if (!info) {
+                message += "Введите информацию о товаре.\n";
+                valid = false;
+            }
+
+            // Проверяем, заполнено ли поле цены
+            if (!cost) {
+                message += "Введите цену товара.\n";
+                valid = false;
+            }
+
+            // Проверяем, заполнено ли поле количества
+            if (!amount) {
+                message += "Введите количество товара.\n";
+                valid = false;
+            }
+
+            // Если форма не валидна, показываем сообщение
+            if (!valid) {
+                alert(message);
+            } else {
+                if (id !== null)
+                    await editProduct(id, name, info, cost, amount);
+
+                else
+                    await createProduct(name, info, cost, amount);
+            }
+        }
+
         //сброс/восстановление значений формы
         document.getElementById("restoreBtn").addEventListener("click", () => {
             const id = getId();
@@ -114,16 +162,8 @@
 
         //отправка формы
         document.getElementById("saveBtn").addEventListener("click", async () => {
-            const id = getId()
-            const name = document.getElementById("nameId").value;
-            const info = document.getElementById("infoId").value;
-            const cost = document.getElementById("costId").value;
-            const amount = document.getElementById("amountId").value;
-            if (id !== null)
-                await editProduct(id, name, info, cost, amount);
-
-            else
-                await createProduct(name, info, cost, amount);
+            const id = getId();
+            await validateAndSubmit(id);
         });
 
         const pageId = getId();

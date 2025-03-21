@@ -8,11 +8,11 @@
     <div>
         <p>
             Артикул товара:<br/>
-            <input id="id" >
+            <input id="id" type="number" required>
         </p>
         <p>
             Количество товара:<br/>
-            <input id="amountId" >
+            <input id="amountId" type="number" required>
         </p>
     </div>
     <div>
@@ -65,6 +65,7 @@
             else {
                 const error = await response.json();
                 console.log(error.message);
+                alert(error.message);
             }
         }
 
@@ -77,13 +78,42 @@
                 reset();
         });
 
-        //отправка формы
-        document.getElementById("saveBtn").addEventListener("click", async () => {
-            const amount = document.getElementById("amountId").value
-            const id = document.getElementById("id").value
+        // валидация полей
+        async function validateAndSubmit() {
+            // Получаем значения полей
+            const amount = document.getElementById("amountId").value;
+            const id = document.getElementById("id").value;
             const now = new Date();
             const dateOnly = now.toLocaleDateString('ru-RU');
-            await createOrder(dateOnly, amount, id);
+
+            // Переменная для отслеживания валидности
+            let valid = true;
+            let message = "";
+
+            // Проверяем, заполнено ли поле количества
+            if (!amount) {
+                message += "Введите количество товара.\n";
+                valid = false;
+            }
+
+            // Проверяем, заполнено ли поле артикула
+            if (!id) {
+                message += "Введите артикул товара.\n";
+                valid = false;
+            }
+
+            // Если форма не валидна, показываем сообщение
+            if (!valid) {
+                alert(message);
+            } else {
+                await createOrder(dateOnly, amount, id);
+            }
+        }
+
+        //отправка формы
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+
+            await validateAndSubmit();
         });
 
         const pageId = getId();

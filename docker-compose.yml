@@ -4,7 +4,7 @@ services:
     ports:
       - "8000:8000"  # Пробрасываем порт 8000
     environment:
-      DATABASE_URL: postgresql://postgres:B10vvyMz@db:5432/postgres  # URL для подключения к базе данных
+      DATABASE_URL: ${DATABASE_URL}  # URL для подключения к базе данных
     volumes:
       - ./src:/app
     depends_on:
@@ -13,9 +13,9 @@ services:
   db:  # Сервис для PostgreSQL
     image: postgres:16.4-alpine  # Используем образ PostgreSQL
     environment:
-      POSTGRES_DB: postgres  # Имя базы данных
-      POSTGRES_USER: postgres  # Имя пользователя
-      POSTGRES_PASSWORD: B10vvyMz  # Пароль
+      POSTGRES_DB: ${POSTGRES_DB}  # Используем переменную окружения
+      POSTGRES_USER: ${POSTGRES_USER}  # Используем переменную окружения
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # Используем переменную окружения
     ports:
       - "5432:5432"
     volumes:
