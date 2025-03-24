@@ -68,7 +68,7 @@
                 body: JSON.stringify({
                     name: name,
                     info: info,
-                    cost: cost,
+                    cost: parseInt(cost, 10),
                     amount: parseInt(amount, 10)
                 })
             });
@@ -90,7 +90,7 @@
                     id: id,
                     name: name,
                     info: info,
-                    cost: cost,
+                    cost: parseInt(cost, 10),
                     amount: parseInt(amount, 10)
                 })
             });

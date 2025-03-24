@@ -1,6 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Date, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase
-from datetime import datetime
 
 
 class Base(DeclarativeBase):
@@ -21,7 +20,7 @@ class Order(Base):
     __tablename__ = "orders"
 
     id = Column(Integer, primary_key=True)
-    date = Column(DateTime, default=datetime.now().date(), nullable=False)
+    date = Column(Date, default=func.current_date(), nullable=False)
     status = Column(String, nullable=False)
 
 

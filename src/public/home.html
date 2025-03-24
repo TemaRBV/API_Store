@@ -79,6 +79,7 @@
             else {
                 const error = await response.json();
                 console.log(error.message);
+                alert("Вы не можете удалить товар пока он есть в списках заказов");
             }
         }
 

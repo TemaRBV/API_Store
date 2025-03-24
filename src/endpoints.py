@@ -1,7 +1,9 @@
 from fastapi import Depends, Body, APIRouter
 from fastapi.responses import JSONResponse, FileResponse
 
-from sqlalchemy.orm import Session
+from sqlalchemy import delete, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from models import Product, Order, OrderItem
 
@@ -18,12 +20,13 @@ def main():
 
 
 @router.get("/product")
-def get_products(db: Session = Depends(get_db)):
-    return db.query(Product).all()
+async def get_products(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Product))
+    return result.scalars().all()
 
 
 @router.post("/product")
-def create_products(data=Body(), db: Session = Depends(get_db)):
+async def create_products(data=Body(), db: AsyncSession = Depends(get_db)):
     product = Product(name=data["name"], info=data["info"], cost=data["cost"], amount=data["amount"])
     db.add(product)
     return product
@@ -37,16 +40,18 @@ def edit_product():
 
 # получаем пользователя по id
 @router.get("/product/{id}")
-def get_product(id, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == id).first()
+async def get_product(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Product).where(Product.id == id))
+    product = result.scalars().first()
     if product is None:
         return JSONResponse(status_code=404, content={"message": "Товар не найден"})
     return product
 
 
 @router.put("/product/{id}")
-def edit_products(id, data=Body(), db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == id).first()
+async def edit_products(id: int, data=Body(), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Product).where(Product.id == id))
+    product = result.scalars().first()
     if product is None:
         return JSONResponse(status_code=404, content={"message": "Товар не найден"})
     product.name = data["name"]
@@ -56,14 +61,20 @@ def edit_products(id, data=Body(), db: Session = Depends(get_db)):
     return product
 
 
-# удаляем пользователя по id
+# удаляем товар по id
 @router.delete("/product/{id}")
-def delete_product(id, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == id).first()
+async def delete_product(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Product).where(Product.id == id))
+    product = result.scalars().first()
     if product is None:
         return JSONResponse(status_code=404, content={"message": "Товар не найден"})
-    db.delete(product)
-    return product
+    item_result = await db.execute(select(OrderItem).where(OrderItem.product_id == id))
+    item = item_result.scalars().all()
+    if item:
+        return JSONResponse(status_code=400, content={"message": "Вы не можете удалить товар пока он есть в списках "
+                                                                 "заказов"})
+    await db.delete(product)
+    return JSONResponse(status_code=204, content={"message": "Товар успешно удален"})
 
 
 #переход на страницу с созданием заказа
@@ -72,27 +83,31 @@ def create_order():
     return FileResponse("public/order.html")
 
 
+#переход на страницу со списком заказов
 @router.get("/orders/list")
 def show_order():
     return FileResponse("public/orders.html")
 
 
 @router.get("/orders")
-def get_orders(db: Session = Depends(get_db)):
-    return db.query(Order).all()
+async def get_orders(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Order))
+    return result.scalars().all()
 
 
 @router.delete("/orders")
-def del_orders(db: Session = Depends(get_db)):
-    db.query(Order).delete()
+async def del_orders(db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(Order))
+    await db.execute(delete(OrderItem))
     return {"message": "Item deleted successfully"}
 
 
 @router.post("/orders")
-def new_order(order_id=None, data=Body(), db: Session = Depends(get_db)):
-    product_id = data["id"]
+async def new_order(order_id: int = None, data=Body(), db: AsyncSession = Depends(get_db)):
+    product_id = int(data["id"])
     request_amount = data["amount"]
-    product = db.query(Product).filter(Product.id == product_id).first()
+    result = await db.execute(select(Product).where(Product.id == product_id))
+    product = result.scalars().first()
     if not product:
         return JSONResponse(status_code=404, content={"message": "Такого товара не существует"})
     product_amount = product.amount
@@ -101,15 +116,16 @@ def new_order(order_id=None, data=Body(), db: Session = Depends(get_db)):
     if not order_id:
         order = Order(status="В процессе")
         db.add(order)
-        db.flush()  # Это отправит изменения в базу данных, но не зафиксирует их
+        await db.flush()  # Это отправит изменения в базу данных, но не зафиксирует их
         order_id = order.id
         order_item = OrderItem(order_id=order_id, product_id=product_id, order_amount=request_amount)
         db.add(order_item)
         product.amount = product_amount - request_amount
         return order_item
     else:
-        query = db.query(OrderItem).filter(OrderItem.order_id == order_id)
-        double_item = query.filter(OrderItem.product_id == product_id).first()
+        condition = and_(OrderItem.order_id == order_id, OrderItem.product_id == product_id)
+        result_item = await db.execute(select(OrderItem).where(condition))
+        double_item = result_item.scalars().first()
         if double_item:
             return JSONResponse(status_code=400, content={"message": "Вы добавляете уже существующий товар. Для "
                                                                      "заказа этого товара создайте новый заказ"})
@@ -121,15 +137,17 @@ def new_order(order_id=None, data=Body(), db: Session = Depends(get_db)):
 
 
 @router.get("/orders/{id}")
-def get_order(id, db: Session = Depends(get_db)):
-    orders = db.query(OrderItem).filter(OrderItem.order_id == id).all()
+async def get_order(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(OrderItem).where(OrderItem.order_id == id))
+    orders = result.scalars().all()
     if orders is None:
         return JSONResponse(status_code=404, content={"message": "Заказы не найдены"})
     return orders
 
 
 @router.patch("/orders/{id}/status")
-def get_orders(id, data=Body(), db: Session = Depends(get_db)):
-    order = db.query(Order).filter(Order.id == id).first()
+async def get_orders(id: int, data=Body(), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Order).where(Order.id == id))
+    order = result.scalars().first()
     order.status = data["status"]
     return order
