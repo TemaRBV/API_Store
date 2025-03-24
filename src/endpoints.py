@@ -26,8 +26,6 @@ def get_products(db: Session = Depends(get_db)):
 def create_products(data=Body(), db: Session = Depends(get_db)):
     product = Product(name=data["name"], info=data["info"], cost=data["cost"], amount=data["amount"])
     db.add(product)
-    db.commit()
-    db.refresh(product)
     return product
 
 
@@ -55,8 +53,6 @@ def edit_products(id, data=Body(), db: Session = Depends(get_db)):
     product.info = data["info"]
     product.cost = data["cost"]
     product.amount = data["amount"]
-    db.commit()
-    db.refresh(product)
     return product
 
 
@@ -66,9 +62,7 @@ def delete_product(id, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == id).first()
     if product is None:
         return JSONResponse(status_code=404, content={"message": "Товар не найден"})
-
     db.delete(product)
-    db.commit()
     return product
 
 
@@ -88,8 +82,14 @@ def get_orders(db: Session = Depends(get_db)):
     return db.query(Order).all()
 
 
+@router.delete("/orders")
+def del_orders(db: Session = Depends(get_db)):
+    db.query(Order).delete()
+    return {"message": "Item deleted successfully"}
+
+
 @router.post("/orders")
-def new_order(data=Body(), db: Session = Depends(get_db)):
+def new_order(order_id=None, data=Body(), db: Session = Depends(get_db)):
     product_id = data["id"]
     request_amount = data["amount"]
     product = db.query(Product).filter(Product.id == product_id).first()
@@ -98,33 +98,38 @@ def new_order(data=Body(), db: Session = Depends(get_db)):
     product_amount = product.amount
     if request_amount > product_amount:
         return JSONResponse(status_code=400, content={"message": "Необходимого количества нет на складе"})
-    order = Order(date=data["date"], status="В процессе")
-    db.add(order)
-    db.commit()
-    order_id = order.id
-    order_item = OrderItem(order_id=order_id, product_id=product_id, order_amount=request_amount)
-    db.add(order_item)
-    product.amount = product_amount - request_amount
-    db.commit()
-    return order_item
+    if not order_id:
+        order = Order(status="В процессе")
+        db.add(order)
+        db.flush()  # Это отправит изменения в базу данных, но не зафиксирует их
+        order_id = order.id
+        order_item = OrderItem(order_id=order_id, product_id=product_id, order_amount=request_amount)
+        db.add(order_item)
+        product.amount = product_amount - request_amount
+        return order_item
+    else:
+        query = db.query(OrderItem).filter(OrderItem.order_id == order_id)
+        double_item = query.filter(OrderItem.product_id == product_id).first()
+        if double_item:
+            return JSONResponse(status_code=400, content={"message": "Вы добавляете уже существующий товар. Для "
+                                                                     "заказа этого товара создайте новый заказ"})
+        else:
+            order_item = OrderItem(order_id=order_id, product_id=product_id, order_amount=request_amount)
+            db.add(order_item)
+            product.amount = product_amount - request_amount
+            return order_item
 
 
 @router.get("/orders/{id}")
 def get_order(id, db: Session = Depends(get_db)):
-    order = db.query(Order).filter(Order.id == id).first()
-    if order is None:
-        return JSONResponse(status_code=404, content={"message": "Заказ не найден"})
-    order_item = db.query(OrderItem).filter(OrderItem.order_id == id).first()
-    order_amount = order_item.order_amount
-    product_id = order_item.product_id
-    product = db.query(Product).filter(Product.id == product_id).first()
-    name = product.name
-    return {"name": name, "amount": order_amount}
+    orders = db.query(OrderItem).filter(OrderItem.order_id == id).all()
+    if orders is None:
+        return JSONResponse(status_code=404, content={"message": "Заказы не найдены"})
+    return orders
 
 
 @router.patch("/orders/{id}/status")
 def get_orders(id, data=Body(), db: Session = Depends(get_db)):
     order = db.query(Order).filter(Order.id == id).first()
     order.status = data["status"]
-    db.commit()
     return order

@@ -34,12 +34,20 @@
             }
         }
 
-        //берет значение из адреса
+        //берет значение id из адреса
         function getId() {
             const url = new URL(window.location.href);
             const params = new URLSearchParams(url.search);
             const id = params.get("id");
             return id;
+        }
+
+        //берет значение order_id из адреса
+        function getOrderId() {
+            const url = new URL(window.location.href);
+            const params = new URLSearchParams(url.search);
+            const order_id = params.get("order_id");
+            return order_id;
         }
 
         // сброс данных формы
@@ -49,18 +57,37 @@
         }
 
         // создание заказа
-        async function createOrder(date, amount, id) {
+        async function createOrder(amount, id) {
             const response = await fetch("/orders", {
                 method: "POST",
                 headers: { "Accept": "application/json", "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    date: date,
                     amount: parseInt(amount, 10),
                     id: id
                 })
             });
             if (response.ok === true) {
                 window.location.href = "/";
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+                alert(error.message);
+            }
+        }
+
+        // изменение заказа
+        async function editOrder(order_id, amount, id) {
+            const response = await fetch(`/orders?order_id=${order_id}`, {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    amount: parseInt(amount, 10),
+                    id: id
+                })
+            });
+            if (response.ok === true) {
+                window.location.href = "/orders/list";
             }
             else {
                 const error = await response.json();
@@ -83,8 +110,6 @@
             // Получаем значения полей
             const amount = document.getElementById("amountId").value;
             const id = document.getElementById("id").value;
-            const now = new Date();
-            const dateOnly = now.toLocaleDateString('ru-RU');
 
             // Переменная для отслеживания валидности
             let valid = true;
@@ -105,8 +130,15 @@
             // Если форма не валидна, показываем сообщение
             if (!valid) {
                 alert(message);
-            } else {
-                await createOrder(dateOnly, amount, id);
+            }
+            else {
+                const order_id = getOrderId();
+                if (!order_id) {
+                    await createOrder(amount, id);
+                }
+                else {
+                    await editOrder(order_id, amount, id);
+                }
             }
         }
 

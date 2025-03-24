@@ -6,10 +6,17 @@
 </head>
 <body>
     <h2>Список заказов</h2>
-    <div id="info"></div>
+    <button id="deleteBtn">Удалить все заказы</button>
+    <div>
+        <table>
+        <thead><tr><th>Артикул</th><th>Название</th><th>Количество</th><th></th></tr></thead>
+        <tbody id="info">
+        </tbody>
+    </table>
+    </div>
     <table>
         <thead><tr><th>ID</th><th>Дата</th><th>Статус</th><th></th></tr></thead>
-        <tbody>
+        <tbody id="orders">
         </tbody>
     </table>
     <script>
@@ -21,44 +28,55 @@
             });
             if (response.ok === true) {
                 const orders = await response.json();
-                const rows = document.querySelector("tbody");
+                const rows = document.getElementById("orders");
                 orders.forEach(order => rows.append(row(order)));
             }
         }
 
         // создание информационного окна
         async function showInfo(id) {
-            const response = await fetch(`/orders/${id}`, {
+            const tableId = document.getElementById("info");
+
+            const responseOrders = await fetch(`/orders/${id}`, {
                 method: "GET",
                 headers: { "Accept": "application/json" }
             });
-            if (response.ok === true) {
-                const order = await response.json();
+            if (responseOrders.ok === true) {
+                const orders = await responseOrders.json();
                 const infoAr = document.getElementById("info");
                 infoAr.innerHTML = '';
+                for (const order of orders) {
+                    const response = await fetch(`/product/${order.product_id}`, {
+                        method: "GET",
+                        headers: { "Accept": "application/json" }
+                    });
+                    if (response.ok === true) {
+                        const product = await response.json();
+                        const name = product.name;
 
-                const div = document.createElement("div");
+                        const tr = document.createElement("tr");
 
-                const pDate = document.createElement("p");
-                pDate.append("Наименование товара: ");
-                pDate.append(order.name);
+                        const idTd = document.createElement("td");
+                        idTd.append(order.product_id);
+                        tr.append(idTd);
 
-                div.append(pDate);
+                        const nameTd = document.createElement("td");
+                        nameTd.append(name);
+                        tr.append(nameTd);
 
-                const pInfo = document.createElement("p");
-                pInfo.append("количество: ");
-                pInfo.append(order.amount);
+                        const amountTd = document.createElement("td");
+                        amountTd.append(order.order_amount);
+                        tr.append(amountTd);
 
-                div.append(pInfo);
-
-                infoAr.appendChild(div);
-
+                        tableId.append(tr);
+                    };
+                };
             }
             else {
                 const error = await response.json();
                 console.log(error.message);
             }
-        }
+        };
 
         // изменение статуса заказа
         async function editStatus(id, status) {
@@ -116,11 +134,42 @@
             infoLink.addEventListener("click", async() => await showInfo(order.id));
             linksTd.append(infoLink);
 
+            const addLink = document.createElement("button");
+            addLink.append("Добавить товар");
+            addLink.addEventListener("click", () => window.location.href = `/orders/new?order_id=${order.id}`);
+            linksTd.append(addLink);
+
             tr.appendChild(linksTd);
 
             return tr;
         }
 
+        // Удаление заказов
+        async function deleteOrders() {
+            const response = await fetch("/orders", {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                location.reload(true);
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        //Удаление заказов
+        document.getElementById("deleteBtn").addEventListener("click", async () => {
+            const confirmation = confirm("Вы уверены, что хотите удалить все заказы безвозвратно?");
+
+            if (confirmation) {
+                await deleteOrders()
+                alert("Элемент удален.");
+            } else {
+                alert("Удаление отменено.");
+            }
+        });
         //загрузка заказов
         getOrders();
     </script>

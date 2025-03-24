@@ -25,6 +25,6 @@ def get_db():
         db.commit()  # Коммитим изменения, если все прошло успешно
     except Exception as e:
         db.rollback()  # Откатываем транзакцию в случае ошибки
-        raise HTTPException(status_code=500, detail="Database error occurred")  # Генерируем HTTP-ошибку
+        raise HTTPException(status_code=500, detail=e)  # Генерируем HTTP-ошибку
     finally:
         db.close()  # Закрываем сессию
